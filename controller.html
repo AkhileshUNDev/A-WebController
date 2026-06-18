@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Field Control Pro - Unified Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void: #0a0c10;
+    --panel: rgba(18, 21, 28, 0.82);
+    --panel-raised: rgba(24, 28, 38, 0.95);
+    --line: rgba(255,255,255,0.07);
+    --line-bright: rgba(255,255,255,0.13);
+    --signal: #f97316;
+    --signal-dim: rgba(249,115,22,0.15);
+    --signal-glow: rgba(249,115,22,0.35);
+    --link: #22d3ee;
+    --link-dim: rgba(34,211,238,0.12);
+    --link-glow: rgba(34,211,238,0.3);
+    --danger: #f43f5e;
+    --danger-dim: rgba(244,63,94,0.15);
+    --ok: #34d399;
+    --text: #f1f5f9;
+    --text-dim: #94a3b8;
+    --text-faint: #475569;
+    --safe-t:env(safe-area-inset-top,0px);
+    --safe-b:env(safe-area-inset-bottom,0px);
+    --safe-l:env(safe-area-inset-left,0px);
+    --safe-r:env(safe-area-inset-right,0px);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  *{
+    box-sizing:border-box;
+    -webkit-tap-highlight-color:transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: none; /* block ALL default touch on everything */
+  }
+
+  /* re-enable scroll only for modal content */
+  .modal-box{ touch-action: pan-y; }
+  input[type=text]{ touch-action: manipulation; -webkit-user-select:text; user-select:text; }
+  /* CRITICAL: sliders must have pan-x so finger drag works on mobile */
+  input[type=range]{ touch-action: pan-x; cursor: pointer; }
+  /* ALL tappable elements need manipulation for instant zero-delay tap */
+  button, .btn, .switch, .close-modal-btn, #linkBtnTop, #gameSettingsBtn,
+  .connect-action, .disconnect-action, #system-start-trigger {
+    touch-action: manipulation;
+  }
+
+  html,body{margin:0;height:100%;background:var(--void);overflow:hidden;}
+  body{
+    font-family:'Poppins',sans-serif;
+    color:var(--text);
+    display:flex;
+    flex-direction:column;
+    height:100vh;
+    height:100dvh;
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(34,211,238,0.04) 0%, transparent 55%),
+      radial-gradient(ellipse at 80% 50%, rgba(249,115,22,0.04) 0%, transparent 55%),
+      radial-gradient(ellipse at 50% 0%, rgba(139,92,246,0.04) 0%, transparent 40%),
+      var(--void);
+    padding-top:var(--safe-t);
+    padding-bottom:var(--safe-b);
+    padding-left:var(--safe-l);
+    padding-right:var(--safe-r);
+  }
+
+  /* ===== ROTATE GATE ===== */
+  #rotate-gate{
+    position:fixed;inset:0;z-index:200;
+    background:var(--void);
+    display:none;
+    flex-direction:column;align-items:center;justify-content:center;
+    gap:20px;padding:30px;text-align:center;
+  }
+  #rotate-gate.show{display:flex;}
+  .rotate-icon{width:60px;height:60px;color:var(--signal);animation:tilt 1.8s ease-in-out infinite;}
+  @keyframes tilt{0%,100%{transform:rotate(0deg);}50%{transform:rotate(90deg);}}
+  .rotate-title{font-size:13px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:var(--text);}
+  .rotate-sub{font-size:11px;color:var(--text-dim);max-width:300px;line-height:1.7;font-weight:400;}
+
+  /* ===== STATUS BAR ===== */
+  #statusbar{
+    display:flex;align-items:center;gap:10px;
+    padding:7px 16px;
+    background:rgba(10,12,16,0.92);
+    border-bottom:1px solid var(--line);
+    font-family:'Poppins',sans-serif;
+    font-size:10.5px;
+    font-weight:500;
+    letter-spacing:0.04em;
+    flex-shrink:0;
+    z-index:10;
+    backdrop-filter:blur(16px);
+  }
+  .dot{
+    width:7px;height:7px;border-radius:50%;
+    background:var(--danger);
+    box-shadow:0 0 7px var(--danger);
+    flex-shrink:0;
+    transition:all .3s ease;
+  }
+  .dot.on{background:var(--ok);box-shadow:0 0 10px var(--ok);}
+  .dot.pulse{animation:pulse 1.4s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+  #status-text{color:var(--text-dim);text-transform:uppercase;font-weight:600;font-size:10px;letter-spacing:0.08em;}
+  #statusbar .sep{color:var(--text-faint);opacity:0.4;}
+  #target-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:22vw;color:var(--text-dim);font-size:10px;}
+  #latency{margin-left:auto;color:var(--text-faint);flex-shrink:0;font-size:10px;}
+  #latency.live{color:var(--link);}
+
+  #linkBtnTop{
+    font-size:9.5px;font-weight:600;letter-spacing:0.07em;
+    color:var(--link);background:var(--link-dim);border:1px solid rgba(34,211,238,0.3);
+    border-radius:6px;padding:4px 12px;cursor:pointer;text-transform:uppercase;
+    transition:all 0.2s;
+    font-family:'Poppins',sans-serif;
+  }
+  #linkBtnTop:active{background:var(--link);color:var(--void);}
+
+  #toast{
+    position:fixed;top:50px;left:50%;
+    transform:translate(-50%,-6px);
+    background:rgba(24,28,38,0.97);border:1px solid var(--line-bright);
+    color:var(--text);font-family:'Poppins',sans-serif;font-size:10.5px;
+    font-weight:500;letter-spacing:0.04em;padding:8px 16px;border-radius:8px;
+    opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;
+    z-index:150;white-space:nowrap;box-shadow:0 10px 30px rgba(0,0,0,0.7);
+  }
+  #toast.show{opacity:1;transform:translate(-50%,0);}
+  #toast.err{border-color:var(--danger);color:#fda4af;}
+
+  /* ===== MAIN GRID ===== */
+  .dashboard-grid{
+    flex:1;
+    display:grid;
+    grid-template-columns:176px 1fr 275px;
+    gap:10px;
+    padding:10px;
+    min-height:0;
+    width:100%;
+  }
+
+  /* ===== HUD PANEL ===== */
+  .hud-panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:12px;
+    display:flex;
+    flex-direction:column;
+    backdrop-filter:blur(14px);
+    box-shadow:0 1px 0 rgba(255,255,255,0.03) inset, 0 6px 20px rgba(0,0,0,0.45);
+  }
+
+  .panel-title{
+    font-size:9px;
+    font-weight:700;
+    letter-spacing:0.14em;
+    color:var(--text-faint);
+    text-transform:uppercase;
+    margin-bottom:10px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .panel-title::after{
+    content:'';flex:1;height:1px;
+    background:linear-gradient(to right, var(--line-bright), transparent);
+  }
+
+  /* ===== COLUMN 1: JOYSTICK ===== */
+  .move-col{
+    justify-content:center;
+    align-items:center;
+    gap:10px;
+  }
+
+  .joystick-container{
+    width:140px;height:140px;
+    display:flex;align-items:center;justify-content:center;
+    position:relative;
+    margin:2px 0;
+  }
+
+  #joystick-zone{
+    width:132px;height:132px;
+    background:
+      radial-gradient(circle at center, rgba(34,211,238,0.04) 0%, transparent 70%),
+      rgba(8,10,14,0.9);
+    border:1.5px solid var(--line-bright);
+    border-radius:50%;
+    position:relative;
+    touch-action:none;
+    box-shadow:
+      inset 0 2px 12px rgba(0,0,0,0.7),
+      inset 0 0 0 1px rgba(255,255,255,0.02),
+      0 0 30px rgba(0,0,0,0.4);
+    transition:border-color 0.2s;
+  }
+  #joystick-zone.active{border-color:rgba(34,211,238,0.5);box-shadow:inset 0 2px 12px rgba(0,0,0,0.7), 0 0 20px rgba(34,211,238,0.1);}
+  #joystick-zone::before,#joystick-zone::after{
+    content:'';position:absolute;background:var(--line-bright);opacity:0.25;pointer-events:none;
+  }
+  #joystick-zone::before{top:50%;left:14px;right:14px;height:1px;transform:translateY(-50%);}
+  #joystick-zone::after{left:50%;top:14px;bottom:14px;width:1px;transform:translateX(-50%);}
+
+  #joystick-thumb{
+    width:46px;height:46px;
+    background:linear-gradient(145deg, rgba(40,48,60,1), rgba(18,22,28,1));
+    border:1.5px solid rgba(255,255,255,0.18);
+    border-radius:50%;
+    position:absolute;
+    top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    pointer-events:none;
+    box-shadow:0 4px 14px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08);
+    display:flex;align-items:center;justify-content:center;
+    transition:border-color 0.2s;
+  }
+  #joystick-thumb::after{
+    content:'';
+    width:10px;height:10px;border-radius:50%;
+    background:radial-gradient(circle, rgba(255,255,255,0.2), rgba(255,255,255,0.06));
+    border:1px solid rgba(255,255,255,0.12);
+  }
+  #joystick-zone.active #joystick-thumb{
+    border-color:rgba(34,211,238,0.5);
+    box-shadow:0 4px 14px rgba(0,0,0,0.7), 0 0 12px rgba(34,211,238,0.2), inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+  #joystick-zone.active #joystick-thumb::after{background:radial-gradient(circle, var(--link), rgba(34,211,238,0.3));}
+
+  .axis-readout{
+    font-size:10px;color:var(--text-faint);
+    display:flex;gap:14px;margin-top:2px;
+    font-weight:500;
+  }
+  .axis-readout .val{color:var(--link);width:24px;display:inline-block;font-weight:600;}
+
+  /* ===== COLUMN 2: CENTER ===== */
+  .center-col{
+    display:flex;flex-direction:column;
+    gap:8px;min-width:0;
+  }
+
+  .cam-row-box{
+    flex:1;display:flex;gap:8px;min-height:0;
+  }
+
+  #pad{
+    flex:1;
+    background:
+      radial-gradient(circle at 30% 40%, rgba(34,211,238,0.025) 0%, transparent 50%),
+      rgba(12,15,20,0.85);
+    border:1px solid var(--line);
+    border-radius:var(--radius-sm);
+    position:relative;overflow:hidden;
+    transition:border-color 0.2s;
+  }
+  #pad:active{border-color:rgba(34,211,238,0.2);}
+  #pad::before{top:50%;left:0;right:0;height:1px;content:'';position:absolute;background:var(--line);opacity:0.6;}
+  #pad::after{left:50%;top:0;bottom:0;width:1px;content:'';position:absolute;background:var(--line);opacity:0.6;}
+
+  #pad-hint{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    font-size:9px;font-weight:500;
+    color:var(--text-faint);letter-spacing:0.08em;text-align:center;pointer-events:none;
+    line-height:1.7;
+  }
+  #crosshair{
+    position:absolute;width:18px;height:18px;
+    border:1.5px solid var(--link);border-radius:50%;
+    transform:translate(-50%,-50%);pointer-events:none;opacity:0;
+    box-shadow:0 0 12px var(--link-glow);
+    transition:opacity 0.15s;
+  }
+
+  /* ===== SENSITIVITY PANEL ===== */
+  .sens-col{
+    width:48px;
+    min-width:48px;
+    align-items:center;
+    justify-content:space-between;
+    padding:8px 4px 10px;
+    border-radius:var(--radius-sm);
+    flex-shrink:0;
+    overflow:hidden;
+  }
+  .sens-readouts{
+    text-align:center;font-size:10px;line-height:1.4;
+    flex-shrink:0;
+  }
+  .sens-readouts .label{color:var(--text-faint);font-size:8px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;}
+  .sens-readouts .val{color:var(--link);font-weight:700;margin-bottom:3px;font-size:10.5px;}
+
+  .vertical-slider-track-wrap{
+    flex:1;
+    width:100%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    position:relative;
+    overflow:hidden;
+    min-height:0;
+  }
+
+  input[type=range].flowing-slider-vertical{
+    -webkit-appearance:none;appearance:none;
+    position:absolute;
+    /* width = rotated height; must not exceed the track-wrap's rendered height */
+    width:var(--sens-slider-len, 90px);
+    height:4px;
+    background:linear-gradient(to right, var(--signal) 0%, var(--signal) var(--value-percent, 0%), rgba(255,255,255,0.08) var(--value-percent, 0%), rgba(255,255,255,0.08) 100%);
+    border-radius:4px;outline:none;
+    transform:rotate(-90deg);
+    transform-origin:center;
+    /* prevent the rotated element from causing scroll / overflow */
+    max-width:100vw;
+  }
+  input[type=range].flowing-slider-vertical::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:15px;height:15px;border-radius:50%;
+    background:var(--text);border:2px solid var(--signal);cursor:pointer;
+    box-shadow:0 0 8px var(--signal-glow);transition:transform 0.1s;
+  }
+  input[type=range].flowing-slider-vertical::-moz-range-thumb{
+    width:13px;height:13px;border-radius:50%;background:var(--text);border:2px solid var(--signal);
+  }
+  input[type=range].flowing-slider-vertical:active::-webkit-slider-thumb{transform:scale(1.25);background:var(--signal);}
+
+  .sens-footer{
+    text-align:center;
+    flex-shrink:0;
+  }
+  .sens-footer .title-lbl{color:var(--text-faint);font-size:8px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;display:block;margin-bottom:1px;}
+  .sens-footer .current-val{color:var(--signal);font-weight:700;font-size:12px;}
+
+  /* ===== BOTTOM ENV PANEL ===== */
+  .hud-panel.env-panel{
+    flex:0 0 auto;padding:10px 12px;
+  }
+
+  .env-grid{
+    display:grid;grid-template-columns:1fr 1fr;gap:8px;
+  }
+
+  .slider-field-module{
+    background:rgba(255,255,255,0.02);
+    border:1px solid var(--line);
+    border-radius:var(--radius-sm);
+    padding:8px 10px;
+  }
+  .slider-info-row{
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:9px;color:var(--text-dim);
+    margin-bottom:7px;
+  }
+  .slider-info-row .title-lbl{color:var(--text-faint);text-transform:uppercase;font-size:8.5px;font-weight:600;letter-spacing:0.06em;}
+  .slider-info-row .current-val{color:var(--signal);font-weight:700;}
+
+  .flowing-slider-container{
+    position:relative;width:100%;display:flex;align-items:center;
+  }
+  input[type=range].flowing-slider{
+    width:100%;height:4px;-webkit-appearance:none;appearance:none;
+    background:linear-gradient(to right, var(--signal) 0%, var(--signal) var(--value-percent, 0%), rgba(255,255,255,0.08) var(--value-percent, 0%), rgba(255,255,255,0.08) 100%);
+    border-radius:4px;outline:none;
+  }
+  input[type=range].flowing-slider::-webkit-slider-thumb{
+    -webkit-appearance:none;appearance:none;width:15px;height:15px;border-radius:50%;
+    background:var(--text);border:2px solid var(--signal);cursor:pointer;
+    box-shadow:0 0 8px var(--signal-glow);transition:transform 0.1s;
+  }
+  input[type=range].flowing-slider::-moz-range-thumb{
+    width:13px;height:13px;border-radius:50%;background:var(--text);border:2px solid var(--signal);
+  }
+  input[type=range].flowing-slider:active::-webkit-slider-thumb{transform:scale(1.25);background:var(--signal);}
+
+  /* ===== COLUMN 3: ACTION ===== */
+  .action-col{
+    display:flex;flex-direction:column;gap:7px;
+  }
+
+  .action-group-wrapper{
+    display:flex;flex-direction:column;gap:5px;
+  }
+
+  .action-grid-2x1{
+    display:grid;grid-template-columns:repeat(2,1fr);gap:6px;
+  }
+  .action-grid-3x1{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:5px;
+  }
+  .action-grid-3x2{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:5px;
+  }
+  .action-grid-4x1{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:5px;
+  }
+
+  /* ===== BUTTONS ===== */
+  .btn{
+    background:linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+    border:1px solid var(--line);
+    border-radius:var(--radius-sm);
+    text-align:center;
+    cursor:pointer;
+    display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    transition:transform 60ms ease, border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
+    touch-action:none;
+    padding:8px 4px;
+    position:relative;
+    overflow:hidden;
+  }
+  .btn::before{
+    content:'';position:absolute;inset:0;
+    background:linear-gradient(180deg, rgba(255,255,255,0.04) 0%, transparent 100%);
+    border-radius:inherit;
+    pointer-events:none;
+  }
+  .btn .key{
+    font-size:7.5px;font-weight:700;color:var(--text-faint);
+    letter-spacing:0.07em;margin-bottom:2px;text-transform:uppercase;
+  }
+  .btn .label{
+    font-size:11.5px;font-weight:600;color:var(--text);letter-spacing:0.01em;
+  }
+
+  .btn.jump .label{color:#fb923c;}
+  .btn.fire .label{color:var(--danger);}
+
+  .btn.pressed, .btn:active{
+    transform:scale(0.94);
+    border-color:rgba(249,115,22,0.5);
+    background:linear-gradient(180deg, rgba(249,115,22,0.14) 0%, rgba(249,115,22,0.04) 100%);
+    box-shadow:0 0 14px rgba(249,115,22,0.15) inset;
+  }
+  .btn.pressed .label,.btn:active .label{color:var(--signal);}
+
+  .btn.exit-system-ui .label{color:var(--danger);}
+  .btn.exit-system-ui.pressed,.btn.exit-system-ui:active{
+    background:linear-gradient(180deg, rgba(244,63,94,0.14) 0%, rgba(244,63,94,0.04) 100%);
+    border-color:rgba(244,63,94,0.5);
+    box-shadow:0 0 14px rgba(244,63,94,0.12) inset;
+  }
+  .btn.exit-system-ui.pressed .label,.btn.exit-system-ui:active .label{color:#fda4af;}
+
+  #gameSettingsBtn{
+    background:rgba(255,255,255,0.04);
+    border:1px solid var(--line);
+    border-radius:6px;
+    color:var(--text-dim);
+    width:26px;height:26px;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;
+    transition:all 0.2s;
+    flex-shrink:0;
+    padding:0;
+  }
+  #gameSettingsBtn:active, #gameSettingsBtn.active{
+    background:rgba(249,115,22,0.15);
+    border-color:rgba(249,115,22,0.4);
+    color:var(--signal);
+  }
+
+  #game-settings-modal{
+    position:fixed;inset:0;z-index:100;
+    background:rgba(7,9,11,0.88);
+    backdrop-filter:blur(16px);
+    display:none;align-items:center;justify-content:center;
+    padding:20px;
+  }
+  #game-settings-modal.show{display:flex;}
+
+  .modal-quality-btn.quality-active{
+    border-color:rgba(249,115,22,0.6) !important;
+    background:linear-gradient(180deg, rgba(249,115,22,0.2) 0%, rgba(249,115,22,0.07) 100%) !important;
+    box-shadow:0 0 14px rgba(249,115,22,0.12) inset;
+  }
+  .modal-quality-btn.quality-active .label{color:var(--signal) !important;}
+  #settings-modal{
+    position:fixed;inset:0;z-index:100;
+    background:rgba(7,9,11,0.88);
+    backdrop-filter:blur(16px);
+    display:none;align-items:center;justify-content:center;
+    padding:20px;
+  }
+  #settings-modal.show{display:flex;}
+
+  .modal-box{
+    background:#10131a;
+    border:1px solid var(--line-bright);
+    width:100%;max-width:420px;
+    border-radius:16px;padding:20px;
+    box-shadow:0 16px 48px rgba(0,0,0,0.8);
+  }
+
+  .modal-header{
+    display:flex;justify-content:space-between;align-items:center;
+    border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:16px;
+  }
+  .modal-header h3{
+    margin:0;font-size:14px;font-weight:600;
+    letter-spacing:0.03em;color:var(--text);
+    font-family:'Poppins',sans-serif;
+  }
+  .close-modal-btn{
+    background:rgba(255,255,255,0.05);border:1px solid var(--line);
+    color:var(--text-faint);font-size:15px;cursor:pointer;
+    width:28px;height:28px;border-radius:6px;
+    display:flex;align-items:center;justify-content:center;
+    transition:all 0.2s;font-family:'Poppins',sans-serif;
+  }
+  .close-modal-btn:hover{color:var(--danger);border-color:rgba(244,63,94,0.4);background:rgba(244,63,94,0.08);}
+
+  input[type=text]{
+    width:100%;background:rgba(0,0,0,0.4);
+    border:1px solid var(--line-bright);border-radius:8px;
+    color:var(--text);font-family:'Poppins',sans-serif;
+    font-size:12px;font-weight:400;padding:10px 12px;outline:none;
+    transition:border-color 0.2s;
+  }
+  input[type=text]:focus{border-color:rgba(34,211,238,0.5);box-shadow:0 0 0 3px rgba(34,211,238,0.07);}
+
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;margin:14px 0;}
+  .switch{
+    width:36px;height:20px;border-radius:10px;
+    background:rgba(255,255,255,0.05);border:1px solid var(--line);
+    position:relative;cursor:pointer;transition:all 0.2s;
+    flex-shrink:0;
+  }
+  .switch::after{
+    content:'';position:absolute;top:2px;left:2px;
+    width:14px;height:14px;border-radius:50%;
+    background:var(--text-faint);transition:transform .2s, background .2s;
+  }
+  .switch.on{background:rgba(34,211,238,0.2);border-color:rgba(34,211,238,0.4);}
+  .switch.on::after{transform:translateX(16px);background:var(--link);}
+
+  .modal-actions-layout{display:grid;grid-template-columns:2fr 1fr;gap:8px;margin-top:16px;}
+  button.connect-action{
+    background:linear-gradient(180deg, rgba(249,115,22,0.2), rgba(249,115,22,0.07));
+    border:1px solid rgba(249,115,22,0.45);border-radius:8px;
+    color:var(--signal);font-family:'Poppins',sans-serif;
+    font-size:11px;font-weight:600;padding:10px;cursor:pointer;
+    text-transform:uppercase;letter-spacing:0.06em;
+    transition:all 0.2s;
+  }
+  button.connect-action:hover{background:linear-gradient(180deg, rgba(249,115,22,0.3), rgba(249,115,22,0.12));}
+  button.disconnect-action{
+    background:transparent;border:1px solid var(--line);border-radius:8px;
+    color:var(--text-faint);font-family:'Poppins',sans-serif;
+    font-size:11px;font-weight:500;padding:10px;cursor:pointer;
+    text-transform:uppercase;letter-spacing:0.05em;
+    transition:all 0.2s;
+  }
+  button.disconnect-action:hover{border-color:rgba(244,63,94,0.35);color:#fda4af;}
+
+  .modal-meta{
+    margin-top:14px;padding-top:10px;border-top:1px solid var(--line);
+    font-size:9px;color:var(--text-faint);line-height:1.6;
+    display:flex;flex-direction:column;gap:3px;
+  }
+  .modal-meta-row{display:flex;justify-content:space-between;font-weight:500;letter-spacing:0.04em;}
+
+
+
+  /* ===== MEDIA QUERY ===== */
+  @media (max-height: 400px){
+    .dashboard-grid{gap:6px;padding:6px;}
+    .hud-panel{padding:8px;}
+    .joystick-container{width:110px;height:110px;}
+    #joystick-zone{width:104px;height:104px;}
+    #joystick-thumb{width:36px;height:36px;}
+    .btn{padding:5px 2px;}
+    .btn .label{font-size:10.5px;}
+    input[type=range].flowing-slider-vertical{width:90px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="rotate-gate">
+  <svg class="rotate-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+    <rect x="5" y="2" width="14" height="20" rx="2.5"/>
+    <line x1="12" y1="18.5" x2="12" y2="18.5" stroke-width="2.4" stroke-linecap="round"/>
+  </svg>
+  <div class="rotate-title">Landscape Mode Required</div>
+  <div class="rotate-sub">Field Control Pro relies on real-time dual thumb interaction. Please rotate your mobile device sideways.</div>
+</div>
+
+<div id="statusbar">
+  <span class="dot" id="dot"></span>
+  <span id="status-text">DISCONNECTED</span>
+  <span class="sep">/</span>
+  <span id="target-text">NO TARGET</span>
+  <button id="linkBtnTop">Configure Link</button>
+  <button id="gameSettingsBtn" title="Game Settings">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="4" y1="6" x2="20" y2="6"/>
+      <line x1="4" y1="12" x2="20" y2="12"/>
+      <line x1="4" y1="18" x2="20" y2="18"/>
+      <circle cx="9" cy="6" r="2.5" fill="var(--void)"/>
+      <circle cx="15" cy="12" r="2.5" fill="var(--void)"/>
+      <circle cx="9" cy="18" r="2.5" fill="var(--void)"/>
+    </svg>
+  </button>
+  <span id="latency">— ms</span>
+</div>
+
+<div id="toast"></div>
+
+<div class="dashboard-grid">
+
+  <!-- COLUMN 1: JOYSTICK -->
+  <div class="hud-panel move-col">
+    <div class="panel-title">Navigate</div>
+    <div class="joystick-container">
+      <div id="joystick-zone">
+        <div id="joystick-thumb"></div>
+      </div>
+    </div>
+    <div class="axis-readout">
+      <div>X: <span class="val" id="axisX">0.0</span></div>
+      <div>Y: <span class="val" id="axisY">0.0</span></div>
+    </div>
+  </div>
+
+  <!-- COLUMN 2: CENTER -->
+  <div class="center-col">
+
+    <div class="cam-row-box">
+      <div id="pad">
+        <div id="pad-hint">DRAG TO AIM CAMERA</div>
+        <div id="crosshair"></div>
+      </div>
+    </div>
+
+    <div class="hud-panel env-panel">
+      <div class="panel-title" style="margin-bottom:8px;">Environment</div>
+
+      <div class="slider-field-module" style="margin-bottom:8px;">
+        <div class="slider-info-row">
+          <span class="title-lbl">Day & Night</span>
+          <span class="current-val" id="env-time-val">11:00 AM</span>
+        </div>
+        <div class="flowing-slider-container">
+          <input type="range" id="env-time-slider" class="flowing-slider" min="600" max="2300" value="1100" oninput="transmitTime(this.value)">
+        </div>
+      </div>
+
+      <div class="action-grid-4x1">
+        <div class="btn" data-action="Camera View"><span class="label" style="font-size:10px;">Cam Sw</span></div>
+        <div class="btn" data-action="Rain"><span class="label" style="font-size:10px;">Rain</span></div>
+        <div class="btn" id="toggle-fly-btn" data-action="camera_fly"><span class="label" style="font-size:9.5px;white-space:nowrap;">Fly Cam</span></div>
+        <div class="btn" data-action="Reset"><span class="label" style="font-size:10px;">Reset</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- COLUMN 3: ACTION -->
+  <div class="hud-panel action-col">
+    <div class="panel-title">Combat & Comms</div>
+
+    <div class="action-group-wrapper">
+      <div class="action-grid-2x1">
+        <div class="btn jump" data-action="jump"><span class="key">SPACE</span><span class="label">Jump</span></div>
+        <div class="btn fire" data-action="fire"><span class="key">LMB</span><span class="label">Fire</span></div>
+      </div>
+
+      <div class="panel-title" style="margin:4px 0 2px;font-size:8px;">Expressive Matrix</div>
+      <div class="action-grid-3x1">
+        <div class="btn" data-action="emote_1"><span class="label" style="font-size:10px;">Emote 1</span></div>
+        <div class="btn" data-action="emote_2"><span class="label" style="font-size:10px;">Emote 2</span></div>
+        <div class="btn" data-action="emote_3"><span class="label" style="font-size:10px;">Emote 3</span></div>
+      </div>
+
+      <div class="panel-title" style="margin:4px 0 2px;font-size:8px;">Skin Customizer</div>
+      <div class="action-grid-3x1">
+        <div class="btn" data-action="Modern"><span class="label" style="font-size:10px;">Modern</span></div>
+        <div class="btn" data-action="Premium"><span class="label" style="font-size:10px;">Premium</span></div>
+        <div class="btn" data-action="Classic"><span class="label" style="font-size:10px;">Classic</span></div>
+      </div>
+
+      <div class="panel-title" style="margin:4px 0 2px;font-size:8px;">Views</div>
+      <div class="action-grid-3x2">
+        <div class="btn" data-action="View 1"><span class="label" style="font-size:10px;">View 1</span></div>
+        <div class="btn" data-action="View 2"><span class="label" style="font-size:10px;">View 2</span></div>
+        <div class="btn" data-action="View 3"><span class="label" style="font-size:10px;">View 3</span></div>
+
+        <div class="btn" id="exit-view-btn" data-action="Walk" style="opacity:0.4;pointer-events:none;"><span class="label" style="font-size:10px;">Exit View</span></div>
+
+        <div class="btn exit-system-ui" data-action="Exit" id="system-exit-trigger-btn"><span class="label" style="font-size:10px;">Exit App</span></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- GAME SETTINGS MODAL -->
+<div id="game-settings-modal">
+  <div class="modal-box" id="gameSettingsBox">
+    <div class="modal-header">
+      <h3>Game Settings</h3>
+      <button class="close-modal-btn" id="closeGameSettingsBtn">&times;</button>
+    </div>
+
+    <!-- SENSITIVITY -->
+    <div style="margin-bottom:18px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <label style="font-size:9.5px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.07em;">Camera Sensitivity</label>
+        <span style="font-size:13px;font-weight:700;color:var(--signal);" id="modal-sens-val">8</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span style="font-size:9px;color:var(--text-faint);font-weight:600;">1</span>
+        <div style="flex:1;position:relative;">
+          <input type="range" id="modal-sens" class="flowing-slider" min="1" max="20" value="8" oninput="syncSensModal(this.value)">
+        </div>
+        <span style="font-size:9px;color:var(--text-faint);font-weight:600;">20</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:10px;">
+        <span style="font-size:9px;color:var(--text-faint);font-weight:600;">DX: <span id="modal-readout-dx" style="color:var(--link);">0.0</span></span>
+        <span style="font-size:9px;color:var(--text-faint);font-weight:600;">DY: <span id="modal-readout-dy" style="color:var(--link);">0.0</span></span>
+      </div>
+    </div>
+
+<div style="margin-bottom:18px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <label style="font-size:9.5px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.07em;">
+          <span style="margin-right:4px;">☀</span>Display Brightness
+        </label>
+        <span style="font-size:13px;font-weight:700;color:var(--signal);" id="modal-bright-val">50%</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span style="font-size:10px;color:var(--text-faint);">🌑</span>
+        <div style="flex:1;position:relative;">
+          <input type="range" id="modal-brightness" class="flowing-slider" min="0" max="100" value="50" oninput="syncBrightness(this.value)">
+        </div>
+        <span style="font-size:10px;color:var(--text-faint);">☀</span>
+      </div>
+    </div>
+    
+    
+
+    <!-- QUALITY -->
+    <div style="margin-bottom:6px;">
+      <label style="display:block;font-size:9.5px;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;">Render Quality</label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+        <div class="btn modal-quality-btn" id="quality-low" data-action="quality_low" data-quality="low">
+          <span class="label" style="font-size:11px;">Low</span>
+        </div>
+        <div class="btn modal-quality-btn" id="quality-medium" data-action="quality_medium" data-quality="medium">
+          <span class="label" style="font-size:11px;">Medium</span>
+        </div>
+        <div class="btn modal-quality-btn" id="quality-high" data-action="quality_high" data-quality="high">
+          <span class="label" style="font-size:11px;">High</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-meta" style="margin-top:14px;">
+      <div class="modal-meta-row"><span>ACTIVE QUALITY</span><span id="active-quality-label" style="color:var(--signal);font-weight:600;">—</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div id="settings-modal">
+  <div class="modal-box" id="settingsBox">
+    <div class="modal-header">
+      <h3>System Link Configuration</h3>
+      <button class="close-modal-btn" id="closeSettingsBtn">&times;</button>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label style="display:block;font-size:9.5px;font-weight:600;color:var(--text-dim);margin-bottom:7px;text-transform:uppercase;letter-spacing:0.07em;">Server Address</label>
+      <input type="text" id="ip" placeholder="192.168.1.42:9000" inputmode="url" autocomplete="off" spellcheck="false">
+    </div>
+
+    <div style="margin-bottom: 12px;">
+      <label style="display:block; font-family:'JetBrains Mono'; font-size:10px; color:var(--text-dim); margin-bottom:6px; text-transform:uppercase;">Server Core Target Address</label>
+      <input type="text" id="ip" placeholder="192.168.1.42:9000" inputmode="url" autocomplete="off" spellcheck="false">
+    </div>
+
+    <div class="toggle-row">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--text);">Haptic Feedback</div>
+        <div style="font-size:10px;color:var(--text-faint);margin-top:2px;font-weight:400;">Vibrate on action input</div>
+      </div>
+      <div class="switch on" id="hapticSwitch"></div>
+    </div>
+
+    <div class="modal-actions-layout">
+      <button class="connect-action" id="connectBtn">Establish Link</button>
+      <button class="disconnect-action" id="disconnectBtn">Kill Link</button>
+    </div>
+
+    <div class="modal-meta">
+      <div class="modal-meta-row"><span>GATEWAY</span><span>WS / JSON</span></div>
+      <div class="modal-meta-row"><span>BUILD</span><span>FC-5.0_UNIFIED_HUD</span></div>
+    </div>
+  </div>
+</div>
+
+
+
+<script>
+let ws = null;
+let dragging = false;
+let lastX = 0, lastY = 0;
+let autoReconnect = true;
+let hapticOn = true;
+let reconnectTimer = null;
+let manualDisconnect = false;
+
+function openSettingsModal() {
+  document.getElementById('settings-modal').classList.add('show');
+}
+function closeSettingsModal() {
+  document.getElementById('settings-modal').classList.remove('show');
+}
+
+function openGameSettings() {
+  document.getElementById('game-settings-modal').classList.add('show');
+  document.getElementById('gameSettingsBtn').classList.add('active');
+}
+function closeGameSettings() {
+  document.getElementById('game-settings-modal').classList.remove('show');
+  document.getElementById('gameSettingsBtn').classList.remove('active');
+}
+
+// fastTap: fires on touchend immediately (no 300ms delay), falls back to click on desktop
+function fastTap(el, fn) {
+  if (!el) return;
+  let tapped = false;
+  el.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    tapped = true;
+    fn(e);
+    setTimeout(() => { tapped = false; }, 400);
+  }, {passive: false});
+  el.addEventListener('click', (e) => {
+    if (!tapped) fn(e);
+  });
+}
+
+// Wire modal backdrop close (tap outside box closes)
+function wireBackdropClose(modalId, closeFn, boxId) {
+  const modal = document.getElementById(modalId);
+  const box = document.getElementById(boxId);
+  if (!modal || !box) return;
+  ['touchend','click'].forEach(ev => {
+    modal.addEventListener(ev, (e) => {
+      if (ev === 'touchend') e.preventDefault();
+      closeFn();
+    });
+    box.addEventListener(ev, (e) => {
+      e.stopPropagation();
+    });
+  });
+}
+
+// quality buttons
+document.addEventListener('DOMContentLoaded', () => {
+  // Wire all statusbar + modal buttons via fastTap
+  fastTap(document.getElementById('linkBtnTop'), openSettingsModal);
+  fastTap(document.getElementById('gameSettingsBtn'), openGameSettings);
+  fastTap(document.getElementById('closeSettingsBtn'), closeSettingsModal);
+  fastTap(document.getElementById('closeGameSettingsBtn'), closeGameSettings);
+  fastTap(document.getElementById('connectBtn'), connect);
+  fastTap(document.getElementById('disconnectBtn'), disconnect);
+  fastTap(document.getElementById('hapticSwitch'), toggleHaptic);
+
+  wireBackdropClose('settings-modal', closeSettingsModal, 'settingsBox');
+  wireBackdropClose('game-settings-modal', closeGameSettings, 'gameSettingsBox');
+
+  document.querySelectorAll('.modal-quality-btn').forEach(btn => {
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const quality = btn.getAttribute('data-quality');
+      const action = btn.getAttribute('data-action');
+      document.querySelectorAll('.modal-quality-btn').forEach(b => b.classList.remove('quality-active'));
+      btn.classList.add('quality-active');
+      document.getElementById('active-quality-label').innerText = quality.charAt(0).toUpperCase() + quality.slice(1);
+      vibrate(12);
+      transmitPayload({ type: 'button', action: action });
+      btn.classList.add('pressed');
+    });
+    btn.addEventListener('pointerup', () => btn.classList.remove('pressed'));
+    btn.addEventListener('pointercancel', () => btn.classList.remove('pressed'));
+  });
+});
+
+function updateSliderFlowBackground(sliderElement) {
+  if (!sliderElement) return;
+  const min = parseFloat(sliderElement.min) || 0;
+  const max = parseFloat(sliderElement.max) || 100;
+  const val = parseFloat(sliderElement.value) || 0;
+  const percent = ((val - min) / (max - min)) * 100;
+  sliderElement.style.setProperty('--value-percent', percent + '%');
+}
+
+function syncSens(v){
+  const sensElement = document.getElementById('sens');
+  sensElement.value = v;
+  document.getElementById('sens-val').innerText = v;
+  updateSliderFlowBackground(sensElement);
+}
+
+function syncSensModal(v) {
+  document.getElementById('modal-sens').value = v;
+  document.getElementById('modal-sens-val').innerText = v;
+  updateSliderFlowBackground(document.getElementById('modal-sens'));
+  const mainSens = document.getElementById('sens');
+  if (mainSens) { mainSens.value = v; if(document.getElementById('sens-val')) document.getElementById('sens-val').innerText = v; updateSliderFlowBackground(mainSens); }
+}
+
+function transmitTime(val) {
+  let hrs = Math.floor(val / 100);
+  let mins = val % 100;
+  if(mins >= 60) { mins = 59; }
+  const ampm = hrs < 12 ? 'AM' : 'PM';
+  const hrs12 = hrs % 12 === 0 ? 12 : hrs % 12;
+  let labelStr = hrs12 + ":" + String(mins).padStart(2, '0') + " " + ampm;
+  document.getElementById('env-time-val').innerText = labelStr;
+
+  const slider = document.getElementById('env-time-slider');
+  updateSliderFlowBackground(slider);
+
+  transmitPayload({
+    type: "environment",
+    property: "time",
+    timeValue: parseFloat((hrs + (mins / 60)).toFixed(2))
+  });
+}
+
+function toggleHaptic(){
+  hapticOn = !hapticOn;
+  document.getElementById('hapticSwitch').classList.toggle('on', hapticOn);
+}
+
+function vibrate(ms){
+  if(hapticOn && navigator.vibrate) navigator.vibrate(ms);
+}
+
+let toastTimer;
+function showToast(msg, isErr){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = isErr ? 'show err' : 'show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove('show'), 2200);
+}
+
+const rotateGate = document.getElementById('rotate-gate');
+function checkOrientation(){
+  const isMobileWidth = Math.min(window.innerWidth, window.innerHeight) < 768;
+  const isPortrait = window.innerHeight > window.innerWidth;
+  rotateGate.classList.toggle('show', isMobileWidth && isPortrait);
+}
+window.addEventListener('resize', checkOrientation);
+window.addEventListener('orientationchange', checkOrientation);
+checkOrientation();
+
+function transmitPayload(payloadObject) {
+  if (!ws || ws.readyState !== 1) return;
+  ws.send(JSON.stringify(payloadObject));
+}
+
+function connect(){
+  const ipFieldEl = document.getElementById('ip');
+  const ipField = ipFieldEl.value.trim();
+  const ip = ipField || (window.location.hostname + ":9000");
+
+  manualDisconnect = false;
+  clearTimeout(reconnectTimer);
+  ipFieldEl.classList.remove('err');
+
+  try{ if(ws) ws.close(); }catch(e){}
+
+  let socket;
+  try{
+    socket = new WebSocket("ws://" + ip);
+  }catch(e){
+    ipFieldEl.classList.add('err');
+    showToast('INVALID ADDRESS', true);
+    return;
+  }
+  ws = socket;
+
+  dot.classList.add('pulse');
+  dot.classList.remove('on');
+  statusText.innerText = "CONNECTING";
+  targetText.innerText = ip.toUpperCase();
+  document.getElementById('connectBtn').disabled = true;
+
+  ws.onopen = ()=>{
+    dot.classList.remove('pulse');
+    dot.classList.add("on");
+    statusText.innerText = "LINKED";
+    latencyEl.classList.add('live');
+    latencyEl.innerText = "0 ms";
+    document.getElementById('connectBtn').disabled = false;
+    showToast('LINK ESTABLISHED');
+    closeSettingsModal();
+  };
+
+  ws.onerror = ()=>{ showToast('LINK ERROR', true); };
+
+  ws.onclose = ()=>{
+    dot.classList.remove("on", "pulse");
+    statusText.innerText = "DISCONNECTED";
+    latencyEl.classList.remove('live');
+    latencyEl.innerText = "— ms";
+    document.getElementById('connectBtn').disabled = false;
+
+    if(autoReconnect && !manualDisconnect){
+      statusText.innerText = "RETRYING";
+      dot.classList.add('pulse');
+      reconnectTimer = setTimeout(connect, 2500);
+    }
+  };
+}
+
+function disconnect(){
+  manualDisconnect = true;
+  clearTimeout(reconnectTimer);
+  if(ws){ try{ ws.close(); }catch(e){} ws = null; }
+  dot.classList.remove('on','pulse');
+  statusText.innerText = "DISCONNECTED";
+  showToast('LINK CLOSED');
+}
+
+// ================= CONTINUOUS 4-WAY LOCK ENGINE =================
+const joyZone = document.getElementById("joystick-zone");
+const joyThumb = document.getElementById("joystick-thumb");
+const axisXEl = document.getElementById("axisX");
+const axisYEl = document.getElementById("axisY");
+let joyPointerId = null;
+let joyActive = false;
+let joyLoopTimer = null;
+
+let currentAxisX = 0.0;
+let currentAxisY = 0.0;
+
+function handleJoystick(clientX, clientY) {
+  const rect = joyZone.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const maxRadius = rect.width / 2;
+
+  let deltaX = clientX - centerX;
+  let deltaY = clientY - centerY;
+
+  if (Math.abs(deltaX) > Math.abs(deltaY)) {
+    deltaY = 0;
+  } else {
+    deltaX = 0;
+  }
+
+  const distance = Math.max(Math.abs(deltaX), Math.abs(deltaY));
+
+  if (distance > maxRadius) {
+    if (deltaX !== 0) deltaX = Math.sign(deltaX) * maxRadius;
+    if (deltaY !== 0) deltaY = Math.sign(deltaY) * maxRadius;
+  }
+
+  joyThumb.style.left = `calc(50% + ${deltaX}px)`;
+  joyThumb.style.top = `calc(50% + ${deltaY}px)`;
+
+  const activationThreshold = maxRadius * 0.85;
+
+  if (distance < activationThreshold) {
+    currentAxisX = 0.0;
+    currentAxisY = 0.0;
+    axisXEl.innerText = "0.0";
+    axisYEl.innerText = "0.0";
+    return;
+  }
+
+  currentAxisX = deltaX === 0 ? 0.0 : (deltaX > 0 ? 1.0 : -1.0);
+  currentAxisY = deltaY === 0 ? 0.0 : (-deltaY > 0 ? 1.0 : -1.0);
+  axisXEl.innerText = currentAxisX.toFixed(1);
+  axisYEl.innerText = currentAxisY.toFixed(1);
+}
+
+function startStreamingLoop() {
+  if (joyLoopTimer) clearInterval(joyLoopTimer);
+  joyLoopTimer = setInterval(() => {
+    if (joyActive) {
+      transmitPayload({ type: "move", x: currentAxisX, y: currentAxisY });
+    }
+  }, 16);
+}
+
+function resetJoystick() {
+  joyActive = false;
+  joyPointerId = null;
+
+  if (joyLoopTimer) {
+    clearInterval(joyLoopTimer);
+    joyLoopTimer = null;
+  }
+
+  currentAxisX = 0.0;
+  currentAxisY = 0.0;
+  axisXEl.innerText = "0.0";
+  axisYEl.innerText = "0.0";
+
+  joyZone.classList.remove("active");
+  joyThumb.style.left = "50%";
+  joyThumb.style.top = "50%";
+
+  transmitPayload({ type: "move", x: 0.0, y: 0.0 });
+}
+
+joyZone.addEventListener("pointerdown", e => {
+  e.preventDefault();
+  joyZone.setPointerCapture(e.pointerId);
+  joyPointerId = e.pointerId;
+  joyActive = true;
+  joyZone.classList.add("active");
+  vibrate(10);
+  handleJoystick(e.clientX, e.clientY);
+  startStreamingLoop();
+});
+
+joyZone.addEventListener("pointermove", e => {
+  if (joyActive && e.pointerId === joyPointerId) {
+    handleJoystick(e.clientX, e.clientY);
+  }
+});
+
+joyZone.addEventListener("pointerup", resetJoystick);
+joyZone.addEventListener("pointercancel", resetJoystick);
+
+// ================= ACTION & ENVIRONMENT RUNNERS =================
+function sendButton(action, el, isDown){
+  if(isDown){
+    el.classList.add('pressed');
+    vibrate(12);
+    transmitPayload({type: "button", action: action});
+  } else {
+    el.classList.remove('pressed');
+  }
+}
+
+document.querySelectorAll('.btn[data-action]').forEach(btn=>{
+  const action = btn.getAttribute('data-action');
+
+  btn.addEventListener('pointerdown', (e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    btn.setPointerCapture && btn.setPointerCapture(e.pointerId);
+    sendButton(action, btn, true);
+
+    const exitViewBtn = document.getElementById('exit-view-btn');
+    if (exitViewBtn) {
+      if (action === 'View 1' || action === 'View 2' || action === 'View 3') {
+        exitViewBtn.style.opacity = '1';
+        exitViewBtn.style.pointerEvents = 'auto';
+      } else if (action === 'Walk') {
+        exitViewBtn.style.opacity = '0.4';
+        exitViewBtn.style.pointerEvents = 'none';
+      }
+    }
+  });
+
+  btn.addEventListener('pointerup', (e)=>{
+    sendButton(action, btn, false);
+    btn.classList.remove('pressed');
+  });
+  btn.addEventListener('pointercancel', (e)=>{
+    btn.classList.remove('pressed');
+  });
+});
+
+// ================= LOOK TARGET AIM PAD =================
+const pad = document.getElementById("pad");
+const padHint = document.getElementById("pad-hint");
+const crosshair = document.getElementById("crosshair");
+let camPointerId = null;
+
+function moveCrosshair(x, y){
+  const rect = pad.getBoundingClientRect();
+  let cx = x - rect.left; let cy = y - rect.top;
+  cx = Math.max(0, Math.min(rect.width, cx));
+  cy = Math.max(0, Math.min(rect.height, cy));
+  crosshair.style.left = cx + "px";
+  crosshair.style.top = cy + "px";
+}
+
+pad.addEventListener("pointerdown", e=>{
+  e.preventDefault();
+  e.stopPropagation();
+  pad.setPointerCapture && pad.setPointerCapture(e.pointerId);
+  camPointerId = e.pointerId;
+  dragging = true;
+  lastX = e.clientX; lastY = e.clientY;
+  padHint.style.opacity = 0;
+  crosshair.style.opacity = 1;
+  moveCrosshair(e.clientX, e.clientY);
+});
+
+pad.addEventListener("pointermove", e=>{
+  e.preventDefault();
+  if(!dragging || e.pointerId !== camPointerId) return;
+  const sensEl = document.getElementById("modal-sens") || document.getElementById("sens");
+  const sens = sensEl ? (sensEl.value / 10) : 0.8;
+  const dx = (e.clientX - lastX) * sens;
+  const dy = (e.clientY - lastY) * sens;
+  lastX = e.clientX; lastY = e.clientY;
+  moveCrosshair(e.clientX, e.clientY);
+  transmitPayload({type: "camera", dx: dx, dy: dy});
+  const mdx = document.getElementById('modal-readout-dx');
+  const mdy = document.getElementById('modal-readout-dy');
+  if(mdx) mdx.innerText = dx.toFixed(1);
+  if(mdy) mdy.innerText = dy.toFixed(1);
+});
+
+function endCamDrag(e){
+  if(camPointerId !== null && e && e.pointerId !== camPointerId) return;
+  dragging = false; camPointerId = null;
+  crosshair.style.opacity = 0; padHint.style.opacity = 1;
+}
+pad.addEventListener("pointerup", endCamDrag);
+pad.addEventListener("pointercancel", endCamDrag);
+
+const dot = document.getElementById("dot");
+const statusText = document.getElementById("status-text");
+const targetText = document.getElementById("target-text");
+const latencyEl = document.getElementById("latency");
+
+document.addEventListener('touchmove', e => {
+  if (e.target.tagName === 'INPUT' && e.target.type === 'range') return;
+  e.preventDefault();
+}, {passive: false});
+document.addEventListener('touchstart', e => {
+  // block pinch-zoom (2+ fingers)
+  if (e.touches.length > 1) e.preventDefault();
+}, {passive: false});
+document.addEventListener('gesturestart', e => e.preventDefault(), {passive: false});
+document.addEventListener('gesturechange', e => e.preventDefault(), {passive: false});
+document.addEventListener('gestureend', e => e.preventDefault(), {passive: false});
+
+function fitVerticalSlider() {
+  const wrap = document.querySelector('.vertical-slider-track-wrap');
+  const slider = document.getElementById('sens');
+  if (!wrap || !slider) return;
+  // The slider is rotated -90deg, so its visual "height" becomes the container's height.
+  // Leave 8px breathing room on each side.
+  const available = wrap.getBoundingClientRect().height - 16;
+  const len = Math.max(40, Math.min(available, 130));
+  slider.style.setProperty('--sens-slider-len', len + 'px');
+  // Also set it on the slider element itself (the CSS var on the element overrides the rule)
+  slider.style.width = len + 'px';
+}
+// Dynamic brightness tracking event pipeline
+function syncBrightness(v) {
+  document.getElementById('modal-bright-val').innerText = v + '%';
+  updateSliderFlowBackground(document.getElementById('modal-brightness'));
+  
+  // Sends a dedicated payload type to avoid overlapping with day & night calculations
+  transmitPayload({ 
+    type: 'brightness', 
+    value: parseFloat(v) 
+  });
+}
+
+window.onload = () => {
+  connect();
+  updateSliderFlowBackground(document.getElementById('env-time-slider'));
+  updateSliderFlowBackground(document.getElementById('sens'));
+  updateSliderFlowBackground(document.getElementById('modal-sens'));
+  updateSliderFlowBackground(document.getElementById('modal-brightness'));
+  fitVerticalSlider();
+};
+
+window.addEventListener('resize', fitVerticalSlider);
+
+// Toggle button label flip-flop
+const toggleFlyBtn = document.getElementById('toggle-fly-btn');
+if (toggleFlyBtn) {
+  let isFlying = false;
+
+  toggleFlyBtn.addEventListener('pointerdown', function(e) {
+    e.preventDefault();
+    const labelSpan = this.querySelector('.label');
+
+    isFlying = !isFlying;
+    labelSpan.textContent = isFlying ? 'Walk Mode' : 'Fly Camera';
+
+    sendButton('env_camera_fly', this, true);
+  });
+
+  toggleFlyBtn.addEventListener('pointerup', function() {
+    sendButton('env_camera_fly', this, false);
+  });
+}
+
+
+</script>
+</body>
+</html>
