@@ -979,14 +979,7 @@ function transmitPayload(payloadObject) {
 function connect(){
   const ipFieldEl = document.getElementById('ip');
   const ipField = ipFieldEl.value.trim();
-  const ip =
-    ipField ||
-    localStorage.getItem("serverIP");
-  if(!ip)
-{
-    openSettingsModal();
-    return;
-}
+  const ip = ipField || (window.location.hostname + ":9000");
 
   manualDisconnect = false;
   clearTimeout(reconnectTimer);
